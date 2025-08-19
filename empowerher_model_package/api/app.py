@@ -77,6 +77,7 @@ def health_check():
         'status': 'healthy',
         'model_loaded': model is not None,
         'preprocessor_loaded': preprocessor is not None and preprocessor.is_fitted,
+        'grid_classifier_loaded': grid_classifier is not None,
         'timestamp': datetime.now().isoformat()
     })
 
