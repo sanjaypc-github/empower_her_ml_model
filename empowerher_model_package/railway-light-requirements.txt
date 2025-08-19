@@ -1,4 +1,4 @@
-# Railway-compatible requirements for ML model deployment
+# Lightweight Railway requirements to prevent crashes
 # Core ML libraries (lighter versions)
 scikit-learn==1.2.2
 pandas==1.5.3
@@ -16,4 +16,4 @@ gunicorn==20.1.0
 
 # Remove heavy dependencies temporarily
 # xgboost==1.7.6  # Commented out - too heavy for Railway
-# folium==0.14.0  # Commented out - visualization not needed for API 
+# folium==0.14.0  # Commented out - visualization not needed for API

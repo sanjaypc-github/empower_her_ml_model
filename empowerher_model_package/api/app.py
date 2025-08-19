@@ -11,7 +11,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.preprocess import CrimeDataPreprocessor
-from utils.grid_classifier import GridClassifier
+from utils.grid_classifier_railway import GridClassifier
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
