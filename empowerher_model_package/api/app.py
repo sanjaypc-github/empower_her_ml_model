@@ -26,46 +26,95 @@ def load_model_and_preprocessor():
     global model, preprocessor, grid_classifier
     
     try:
+        print("Starting to load models...")
+        
+        # Try multiple possible paths for Railway
+        possible_model_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'model', 'crime_predictor.pkl'),
+            os.path.join(os.getcwd(), 'model', 'crime_predictor.pkl'),
+            os.path.join(os.getcwd(), 'empowerher_model_package', 'model', 'crime_predictor.pkl'),
+            '/app/model/crime_predictor.pkl',  # Railway absolute path
+            'model/crime_predictor.pkl'  # Relative path
+        ]
+        
+        possible_preprocessor_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'model', 'preprocessor.pkl'),
+            os.path.join(os.getcwd(), 'model', 'preprocessor.pkl'),
+            os.path.join(os.getcwd(), 'empowerher_model_package', 'model', 'preprocessor.pkl'),
+            '/app/model/preprocessor.pkl',  # Railway absolute path
+            'model/preprocessor.pkl'  # Relative path
+        ]
+        
+        possible_data_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'data', 'crime_data.csv'),
+            os.path.join(os.getcwd(), 'data', 'crime_data.csv'),
+            os.path.join(os.getcwd(), 'empowerher_model_package', 'data', 'crime_data.csv'),
+            '/app/data/crime_data.csv',  # Railway absolute path
+            'data/crime_data.csv'  # Relative path
+        ]
+        
         # Load model
-        model_path = os.path.join(os.path.dirname(__file__), '..', 'model', 'crime_predictor.pkl')
-        if os.path.exists(model_path):
-            model = joblib.load(model_path)
-            print(f"Model loaded from {model_path}")
-        else:
-            print(f"Model file not found at {model_path}")
-            model = None
+        model = None
+        for model_path in possible_model_paths:
+            if os.path.exists(model_path):
+                try:
+                    model = joblib.load(model_path)
+                    print(f"✅ Model loaded from {model_path}")
+                    break
+                except Exception as e:
+                    print(f"❌ Failed to load model from {model_path}: {e}")
+                    continue
+        
+        if model is None:
+            print("❌ Model could not be loaded from any path")
         
         # Load preprocessor
-        preprocessor_path = os.path.join(os.path.dirname(__file__), '..', 'model', 'preprocessor.pkl')
-        preprocessor = CrimeDataPreprocessor()
-        if os.path.exists(preprocessor_path):
-            preprocessor.load_preprocessor(preprocessor_path)
-            print(f"Preprocessor loaded from {preprocessor_path}")
-        else:
-            print(f"Preprocessor file not found at {preprocessor_path}")
-            preprocessor = None
+        preprocessor = None
+        for preprocessor_path in possible_preprocessor_paths:
+            if os.path.exists(preprocessor_path):
+                try:
+                    preprocessor = CrimeDataPreprocessor()
+                    preprocessor.load_preprocessor(preprocessor_path)
+                    print(f"✅ Preprocessor loaded from {preprocessor_path}")
+                    break
+                except Exception as e:
+                    print(f"❌ Failed to load preprocessor from {preprocessor_path}: {e}")
+                    continue
+        
+        if preprocessor is None:
+            print("❌ Preprocessor could not be loaded from any path")
         
         # Initialize grid classifier
-        try:
-            # Load crime data for grid classification
-            data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'crime_data.csv')
+        grid_classifier = None
+        for data_path in possible_data_paths:
             if os.path.exists(data_path):
-                crime_data = pd.read_csv(data_path)
-                grid_classifier = GridClassifier(grid_size=0.01)  # 1.1 km grids
-                grid_summary = grid_classifier.create_grid(crime_data)
-                print(f"Grid classifier initialized with {grid_summary['total_grids']} grids")
-                print(f"High risk zones: {grid_summary['high_risk_grids']}")
-                print(f"Medium risk zones: {grid_summary['medium_risk_grids']}")
-                print(f"Low risk zones: {grid_summary['low_risk_grids']}")
-            else:
-                print(f"Crime data not found at {data_path}")
-                grid_classifier = None
+                try:
+                    crime_data = pd.read_csv(data_path)
+                    grid_classifier = GridClassifier(grid_size=0.01)  # 1.1 km grids
+                    grid_summary = grid_classifier.create_grid(crime_data)
+                    print(f"✅ Grid classifier initialized with {grid_summary['total_grids']} grids")
+                    print(f"High risk zones: {grid_summary['high_risk_grids']}")
+                    print(f"Medium risk zones: {grid_summary['medium_risk_grids']}")
+                    print(f"Low risk zones: {grid_summary['low_risk_grids']}")
+                    break
+                except Exception as e:
+                    print(f"❌ Failed to initialize grid classifier from {data_path}: {e}")
+                    continue
+        
+        if grid_classifier is None:
+            print("❌ Grid classifier could not be initialized from any path")
+            
+        # Print current working directory and list files for debugging
+        print(f"Current working directory: {os.getcwd()}")
+        print("Files in current directory:")
+        try:
+            for file in os.listdir('.'):
+                print(f"  - {file}")
         except Exception as e:
-            print(f"Error initializing grid classifier: {e}")
-            grid_classifier = None
+            print(f"Could not list directory: {e}")
             
     except Exception as e:
-        print(f"Error loading model and preprocessor: {e}")
+        print(f"❌ Error in load_model_and_preprocessor: {e}")
         model = None
         preprocessor = None
         grid_classifier = None
@@ -624,6 +673,61 @@ def track_user_journey():
     except Exception as e:
         print(f"Error in user journey tracking: {e}")
         return jsonify({'error': f'Journey tracking failed: {str(e)}'}), 500
+
+@app.route('/debug/files', methods=['GET'])
+def debug_files():
+    """Debug endpoint to see what files are available"""
+    try:
+        debug_info = {
+            'current_working_directory': os.getcwd(),
+            'files_in_current_dir': [],
+            'files_in_model_dir': [],
+            'files_in_data_dir': [],
+            'files_in_parent_dir': [],
+            'model_exists': False,
+            'preprocessor_exists': False,
+            'crime_data_exists': False
+        }
+        
+        # List files in current directory
+        try:
+            debug_info['files_in_current_dir'] = os.listdir('.')
+        except Exception as e:
+            debug_info['files_in_current_dir'] = [f"Error: {e}"]
+        
+        # Check model directory
+        model_dir = os.path.join(os.getcwd(), 'model')
+        if os.path.exists(model_dir):
+            try:
+                debug_info['files_in_model_dir'] = os.listdir(model_dir)
+            except Exception as e:
+                debug_info['files_in_model_dir'] = [f"Error: {e}"]
+        
+        # Check data directory
+        data_dir = os.path.join(os.getcwd(), 'data')
+        if os.path.exists(data_dir):
+            try:
+                debug_info['files_in_data_dir'] = os.listdir(data_dir)
+            except Exception as e:
+                debug_info['files_in_data_dir'] = [f"Error: {e}"]
+        
+        # Check parent directory
+        parent_dir = os.path.join(os.getcwd(), '..')
+        if os.path.exists(parent_dir):
+            try:
+                debug_info['files_in_parent_dir'] = os.listdir(parent_dir)
+            except Exception as e:
+                debug_info['files_in_parent_dir'] = [f"Error: {e}"]
+        
+        # Check specific files
+        debug_info['model_exists'] = os.path.exists('model/crime_predictor.pkl')
+        debug_info['preprocessor_exists'] = os.path.exists('model/preprocessor.pkl')
+        debug_info['crime_data_exists'] = os.path.exists('data/crime_data.csv')
+        
+        return jsonify(debug_info)
+        
+    except Exception as e:
+        return jsonify({'error': f'Debug failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # Load model and preprocessor on startup
